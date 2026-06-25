@@ -1,0 +1,43 @@
+=== peppercorn ===
+
+Tiny RV32IMAFDV core. 
+
+Idea is to connect a bunch of these to a reconfigurable NoC and create a dataflow NN compiler.
+
+Current:
+- add a comprehensive test suite
+- create a way to benchmark the design
+- pipeline the design
+- add branch predictor and btb
+- make execution unit ooo and add retire unit 
+- vector extension
+- ...?
+
+Planned core features:
+- RV32IMAFDV
+- speculative
+- in-order frontend
+    - out-of-order execution unit:
+    - if first stage of the execution unit is free, and instruction is not dependent on an incomplete load in the second stage of the execution unit, then instruction can execute out-of-order
+- single issue
+- RV32I isa
+
+- 2 stage frontend
+    - 1. instruction fetch, 2. decode + register fetch in parallel
+    - simple branch predictor and BTB
+    - small RAS 
+    - small L0-I and L0-D
+    - simple next-line L0 prefetcher
+
+- 1-2 stage execution unit:
+    - 1. alu ops, adress generation, branch resolution, ... (EX1)
+    - 2. if memory op, instruction continues here until completion (EX2)
+- 1 stage retire unit (RET)
+    - ensure instructions are committed in-order
+    - writes back to registers
+
+The "stack":
+- IcarusVerilog
+- Verilator
+- riscv-tests
+- maybe use Spike later for testing
