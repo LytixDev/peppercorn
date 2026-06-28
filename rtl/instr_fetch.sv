@@ -3,18 +3,13 @@ module instr_fetch
 (
     input  logic [31:0] pc,
 
-    output logic [31:0] next_pc,
-    output logic [31:0] instr
+    output logic [31:0] fetch_addr,
+    output logic [31:0] next_pc
 );
 
-    mem #(.READ_ONLY(1)) instr_mem (
-        .clk        (1'b0),
-        .addr       (pc),
-        .write_data ('0),
-        .write_en   (1'b0),
-        .out_word   (instr)
-    );
-
+    // NOTE: This module looks stupid now, but later when we we add branch
+    // prediction etc it will make more sense.
+    assign fetch_addr = pc;
     assign next_pc = pc + 4;
 
 endmodule

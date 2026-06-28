@@ -16,6 +16,7 @@ module core
     logic [31:0] instr;
     logic [31:0] pc;
     logic [31:0] next_pc;
+    logic [31:0] instr_fetch_addr;
     logic [31:0] mem_read_out;
 
     alu_op_type alu_op;
@@ -76,10 +77,21 @@ module core
 
     // Comb
     instr_fetch instr_fetch_ (
-        .pc      (pc),
+        .pc         (pc),
+        .fetch_addr (instr_fetch_addr),
+        .next_pc    (next_pc)
+    );
 
-        .instr   (instr),
-        .next_pc (next_pc)
+    mem #(.NUM_WORDS(4096)) memory (
+        .clk    (clk),
+
+        .addr_a (instr_fetch_addr),
+        .out_a  (instr),
+
+        .addr_b       (alu_out),
+        .write_data_b (rs2),
+        .write_en_b   (mem_write_en),
+        .out_b        (mem_read_out)
     );
 
     // Comb
@@ -122,15 +134,6 @@ module core
         
         .out_a      (rs1),
         .out_b      (rs2)
-    );
-
-    mem #(.NUM_WORDS(4096)) memory (
-        .clk (clk),
-        .addr (alu_out),
-        .write_data (rs2),
-        .write_en (mem_write_en),
-
-        .out_word (mem_read_out)
     );
 
 endmodule

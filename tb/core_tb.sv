@@ -62,10 +62,10 @@ module core_tb;
 
     initial begin
         // Test 1: straight-line arithmetic
-        dut.instr_fetch_.instr_mem.words[0] = rv_addi(5'd1, 5'd0, 12'd8);
-        dut.instr_fetch_.instr_mem.words[1] = rv_addi(5'd2, 5'd1, 12'd4);
-        dut.instr_fetch_.instr_mem.words[2] = rv_add (5'd3, 5'd1, 5'd2);
-        dut.instr_fetch_.instr_mem.words[3] = rv_sub (5'd4, 5'd3, 5'd1);
+        dut.memory.words[0] = rv_addi(5'd1, 5'd0, 12'd8);
+        dut.memory.words[1] = rv_addi(5'd2, 5'd1, 12'd4);
+        dut.memory.words[2] = rv_add (5'd3, 5'd1, 5'd2);
+        dut.memory.words[3] = rv_sub (5'd4, 5'd3, 5'd1);
 
         reset_core();
         repeat (4) @(posedge clk);
@@ -90,15 +90,15 @@ module core_tb;
         //   6: addi r4, x0, 123    (skipped)
         //   7: addi r6, x0, 7
         //   8: jal  x0, 0          halt
-        dut.instr_fetch_.instr_mem.words[0] = rv_addi (5'd1, 5'd0, 12'd0);
-        dut.instr_fetch_.instr_mem.words[1] = rv_addi (5'd2, 5'd0, 12'd4);
-        dut.instr_fetch_.instr_mem.words[2] = rv_addi (5'd1, 5'd1, 12'd1);
-        dut.instr_fetch_.instr_mem.words[3] = rv_bne  (5'd1, 5'd2, -13'sd4);
-        dut.instr_fetch_.instr_mem.words[4] = rv_addi (5'd3, 5'd0, 12'd99);
-        dut.instr_fetch_.instr_mem.words[5] = rv_jal  (5'd5, 21'sd8);
-        dut.instr_fetch_.instr_mem.words[6] = rv_addi (5'd4, 5'd0, 12'd123);
-        dut.instr_fetch_.instr_mem.words[7] = rv_addi (5'd6, 5'd0, 12'd7);
-        dut.instr_fetch_.instr_mem.words[8] = rv_jal  (5'd0, 21'sd0);
+        dut.memory.words[0] = rv_addi (5'd1, 5'd0, 12'd0);
+        dut.memory.words[1] = rv_addi (5'd2, 5'd0, 12'd4);
+        dut.memory.words[2] = rv_addi (5'd1, 5'd1, 12'd1);
+        dut.memory.words[3] = rv_bne  (5'd1, 5'd2, -13'sd4);
+        dut.memory.words[4] = rv_addi (5'd3, 5'd0, 12'd99);
+        dut.memory.words[5] = rv_jal  (5'd5, 21'sd8);
+        dut.memory.words[6] = rv_addi (5'd4, 5'd0, 12'd123);
+        dut.memory.words[7] = rv_addi (5'd6, 5'd0, 12'd7);
+        dut.memory.words[8] = rv_jal  (5'd0, 21'sd0);
 
         reset_core();
         repeat (20) @(posedge clk);
@@ -127,15 +127,15 @@ module core_tb;
         //   6: lw   r6, 4(r1)      r6 = 7
         //   7: lw   r4, 0(r1)      r4 = 42   (re-read)
         //   8: jal  x0, 0          halt
-        dut.instr_fetch_.instr_mem.words[0] = rv_addi(5'd1, 5'd0, 12'd100);
-        dut.instr_fetch_.instr_mem.words[1] = rv_addi(5'd2, 5'd0, 12'd42);
-        dut.instr_fetch_.instr_mem.words[2] = rv_sw  (5'd2, 5'd1, 12'sd0);
-        dut.instr_fetch_.instr_mem.words[3] = rv_lw  (5'd3, 5'd1, 12'sd0);
-        dut.instr_fetch_.instr_mem.words[4] = rv_addi(5'd5, 5'd0, 12'd7);
-        dut.instr_fetch_.instr_mem.words[5] = rv_sw  (5'd5, 5'd1, 12'sd4);
-        dut.instr_fetch_.instr_mem.words[6] = rv_lw  (5'd6, 5'd1, 12'sd4);
-        dut.instr_fetch_.instr_mem.words[7] = rv_lw  (5'd4, 5'd1, 12'sd0);
-        dut.instr_fetch_.instr_mem.words[8] = rv_jal (5'd0, 21'sd0);
+        dut.memory.words[0] = rv_addi(5'd1, 5'd0, 12'd100);
+        dut.memory.words[1] = rv_addi(5'd2, 5'd0, 12'd42);
+        dut.memory.words[2] = rv_sw  (5'd2, 5'd1, 12'sd0);
+        dut.memory.words[3] = rv_lw  (5'd3, 5'd1, 12'sd0);
+        dut.memory.words[4] = rv_addi(5'd5, 5'd0, 12'd7);
+        dut.memory.words[5] = rv_sw  (5'd5, 5'd1, 12'sd4);
+        dut.memory.words[6] = rv_lw  (5'd6, 5'd1, 12'sd4);
+        dut.memory.words[7] = rv_lw  (5'd4, 5'd1, 12'sd0);
+        dut.memory.words[8] = rv_jal (5'd0, 21'sd0);
 
         reset_core();
         repeat (15) @(posedge clk);

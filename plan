@@ -39,5 +39,9 @@ Planned core features:
 The "stack":
 - IcarusVerilog
 - Verilator
-- riscv-tests
+- riscv-tests (https://github.com/riscv-software-src/riscv-tests)
+- Need to run git submodule update --init --recursive
 - maybe use Spike later for testing
+
+Install on ubuntu using apt:
+sudo apt install iverilog verilator gcc-riscv64-unknown-elf
