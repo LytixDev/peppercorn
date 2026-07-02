@@ -23,11 +23,11 @@ SUPPORTED = [
     "lui", "auipc",
     "beq", "bne", "blt", "bge", "bltu", "bgeu",
     "jal", "jalr",
-    "lw", "sw",
+    "lw", "lb", "lh", "sw", "sb", "sh", "lbu", "lhu",
 ]
 
 SKIP = {
-    "lb", "lbu", "lh", "lhu", "sb", "sh", "fence_i", "ma_data"
+    "fence_i", "ma_data"
 }
 
 

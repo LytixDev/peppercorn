@@ -5,9 +5,8 @@ Tiny RV32IMAFDV core.
 Idea is to connect a bunch of these to a reconfigurable NoC and create a dataflow NN compiler.
 
 Current:
-- add a comprehensive test suite
-- create a way to benchmark the design
 - pipeline the design
+- create a way to benchmark the design
 - add branch predictor and btb
 - make execution unit ooo and add retire unit 
 - vector extension

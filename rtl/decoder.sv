@@ -18,7 +18,10 @@ module decoder
     output logic        jump,   // next_pc = alu output, else pc + 4
     output logic        branch, // next_pc = pc + imm if branch is taken
     output logic        mem_read,
-    output logic        mem_write_en
+    output logic        mem_write_en,
+    output logic [1:0]  mem_req_size_a,
+    output logic [1:0]  mem_req_size_b,
+    output logic        mem_sign_ext  // sign-extend load result (LB/LH vs LBU/LHU)
 );
 
     opcode_type opcode;
@@ -51,17 +54,20 @@ module decoder
 
     always_comb begin
         // Defaults to a noop
-        alu_op       = ALU_ADD;
-        use_imm      = 1'b0;
-        use_pc       = 1'b0;
-        reg_write_en = 1'b0;
-        link         = 1'b0;
-        jump         = 1'b0;
-        branch       = 1'b0;
-        mem_read     = 1'b0;
-        mem_write_en = 1'b0;
-        reg_rs1      = rs1;
-        imm          = imm_i;
+        alu_op         = ALU_ADD;
+        use_imm        = 1'b0;
+        use_pc         = 1'b0;
+        reg_write_en   = 1'b0;
+        link           = 1'b0;
+        jump           = 1'b0;
+        branch         = 1'b0;
+        mem_read       = 1'b0;
+        mem_write_en   = 1'b0;
+        mem_req_size_a = 2'b10;
+        mem_req_size_b = 2'b10;
+        mem_sign_ext   = 1'b0;
+        reg_rs1        = rs1;
+        imm            = imm_i;
 
         case (opcode)
             OPC_OP: begin // R-type: rd = rs1 (op) rs2
@@ -138,17 +144,19 @@ module decoder
                 endcase
             end
 
-            // TODO: Currently we only support aligned 4-byte loads and stores (LW, SW)
             OPC_LOAD: begin
-                reg_write_en = 1'b1;
-                use_imm      = 1'b1;
-                mem_read     = 1'b1;
-                imm          = imm_i;
+                reg_write_en   = 1'b1;
+                use_imm        = 1'b1;
+                mem_read       = 1'b1;
+                imm            = imm_i;
+                mem_req_size_b = funct3[1:0];
+                mem_sign_ext   = !funct3[2]; // funct3[2]=1 for LBU/LHU, 0 for LB/LH/LW
             end
             OPC_STORE: begin
-                use_imm      = 1'b1;
-                mem_write_en = 1'b1;
-                imm          = imm_s;
+                use_imm        = 1'b1;
+                mem_write_en   = 1'b1;
+                imm            = imm_s;
+                mem_req_size_b = funct3[1:0];
             end
 
             OPC_MISC_MEM: ;

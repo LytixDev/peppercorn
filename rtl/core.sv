@@ -28,14 +28,29 @@ module core
     logic branch; // next_pc = pc + imm if branch is taken
     logic mem_read;
     logic mem_write_en;
+    logic mem_sign_ext;
+
+    logic [1:0] mem_req_size_a;
+    logic [1:0] mem_req_size_b;
 
 
     logic [31:0] reg_write_data;
     always_comb begin
-        if (link) begin 
+        logic [31:0] mem_data;
+        if (mem_sign_ext) begin
+            case (mem_req_size_b)
+                2'b00:   mem_data = {{24{mem_read_out[7]}},  mem_read_out[7:0]};
+                2'b01:   mem_data = {{16{mem_read_out[15]}}, mem_read_out[15:0]};
+                default: mem_data = mem_read_out;
+            endcase
+        end else begin
+            mem_data = mem_read_out;
+        end
+
+        if (link) begin
             reg_write_data = next_pc;
         end else if (mem_read) begin
-            reg_write_data = mem_read_out;
+            reg_write_data = mem_data;
         end else begin
             reg_write_data = alu_out;
         end
@@ -86,9 +101,11 @@ module core
         .clk    (clk),
 
         .addr_a (instr_fetch_addr),
+        .size_a (mem_req_size_a),
         .out_a  (instr),
 
         .addr_b       (alu_out),
+        .size_b       (mem_req_size_b),
         .write_data_b (rs2),
         .write_en_b   (mem_write_en),
         .out_b        (mem_read_out)
@@ -96,21 +113,24 @@ module core
 
     // Comb
     decoder decoder_ (
-        .instr        (instr),
+        .instr          (instr),
 
-        .reg_rs1      (reg_rs1),
-        .reg_rs2      (reg_rs2),
-        .reg_rd       (reg_rd),
-        .imm          (imm),
-        .alu_op       (alu_op),
-        .use_imm      (use_imm),
-        .use_pc       (use_pc),
-        .reg_write_en (reg_write_en),
-        .link         (link),
-        .jump         (jump),
-        .branch       (branch),
-        .mem_read     (mem_read),
-        .mem_write_en (mem_write_en)
+        .reg_rs1        (reg_rs1),
+        .reg_rs2        (reg_rs2),
+        .reg_rd         (reg_rd),
+        .imm            (imm),
+        .alu_op         (alu_op),
+        .use_imm        (use_imm),
+        .use_pc         (use_pc),
+        .reg_write_en   (reg_write_en),
+        .link           (link),
+        .jump           (jump),
+        .branch         (branch),
+        .mem_read       (mem_read),
+        .mem_write_en   (mem_write_en),
+        .mem_req_size_a (mem_req_size_a),
+        .mem_req_size_b (mem_req_size_b),
+        .mem_sign_ext   (mem_sign_ext)
     );
 
     // Comb
