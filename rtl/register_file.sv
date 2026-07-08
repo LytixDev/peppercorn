@@ -3,7 +3,7 @@
  * Register 0 can not be written to and always stores 0.
  * Two read ports.
  * One write port.
- * Write happens on the first part of the rising edge, read happens on the second part.
+ * If read to the same register being written to, the incoming write data is read back.
  */
 
 module register_file
@@ -30,7 +30,7 @@ module register_file
         end
     end
 
-    assign out_a = registers[read_a];
-    assign out_b = registers[read_b];
+    assign out_a = (write_en && write != 5'b0 && write == read_a) ? write_data : registers[read_a];
+    assign out_b = (write_en && write != 5'b0 && write == read_b) ? write_data : registers[read_b];
 
 endmodule

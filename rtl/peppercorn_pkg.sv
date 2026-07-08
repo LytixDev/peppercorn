@@ -50,5 +50,57 @@ package peppercorn_pkg;
         ALU_AND
     } alu_op_type;
 
+    /* Pipeline barrier register types */
+    typedef struct packed {
+        logic [31:0] pc;
+        logic [31:0] instr;
+        logic        predict_taken;
+    } if_id_barrier;
+
+    typedef struct packed {
+        logic [31:0] pc;
+        logic [31:0] instr; // TODO: not needed.
+        logic        predict_taken;
+        logic [4:0]  reg_rs1;
+        logic [4:0]  reg_rs2;
+        logic [4:0]  reg_rd;
+        logic [31:0] rs1;
+        logic [31:0] rs2;
+        logic [31:0] imm;
+        alu_op_type  alu_op; 
+        logic        use_imm;
+        logic        use_pc;
+        logic        reg_write_en;
+        logic        link;   // rd = pc + 4, else alu output
+        logic        jump;   // next_pc = alu output, else pc + 4
+        logic        branch; // next_pc = pc + imm if branch is taken
+        logic        mem_read;
+        logic        mem_write_en;
+        logic [1:0]  mem_req_size_b;
+        logic        mem_sign_ext;  // sign-extend load result (LB/LH vs LBU/LHU)
+    } id_ex1_barrier;
+
+    typedef struct packed {
+        logic [31:0] pc;
+        logic [31:0] imm;
+        logic [31:0] instr; // TODO: not needed.
+        logic [4:0]  reg_rd;
+        logic [31:0] rs2;
+        logic [31:0] alu_result;
+        logic        reg_write_en;
+        logic        link;   // rd = pc + 4, else alu output
+        logic        jump;   // next_pc = alu output, else pc + 4
+        logic        branch; // next_pc = pc + imm if branch is taken
+        logic        mem_read;
+        logic        mem_write_en;
+        logic [1:0]  mem_req_size_b;
+        logic        mem_sign_ext;  // sign-extend load result (LB/LH vs LBU/LHU)
+    } ex1_ex2_barrier;
+
+    typedef struct packed {
+        logic [4:0]  reg_rd;
+        logic        reg_write_en;
+        logic [31:0] reg_write_data; // Can be from the ALU or from a load
+    } ex2_ret_barrier;
 
 endpackage
