@@ -55,6 +55,7 @@ package peppercorn_pkg;
         logic [31:0] pc;
         logic [31:0] instr;
         logic        predict_taken;
+        logic        valid;
     } if_id_barrier;
 
     typedef struct packed {
@@ -78,6 +79,7 @@ package peppercorn_pkg;
         logic        mem_write_en;
         logic [1:0]  mem_req_size_b;
         logic        mem_sign_ext;  // sign-extend load result (LB/LH vs LBU/LHU)
+        logic        valid;
     } id_ex1_barrier;
 
     typedef struct packed {
@@ -95,12 +97,14 @@ package peppercorn_pkg;
         logic        mem_write_en;
         logic [1:0]  mem_req_size_b;
         logic        mem_sign_ext;  // sign-extend load result (LB/LH vs LBU/LHU)
+        logic        valid;
     } ex1_ex2_barrier;
 
     typedef struct packed {
         logic [4:0]  reg_rd;
         logic        reg_write_en;
         logic [31:0] reg_write_data; // Can be from the ALU or from a load
+        logic        valid;
     } ex2_ret_barrier;
 
 endpackage

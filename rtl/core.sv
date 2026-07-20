@@ -112,10 +112,12 @@ module core
             if_id_reg.pc            <= '0;
             if_id_reg.instr         <= `NOP_INSTR;
             if_id_reg.predict_taken <= 1'b0;
+            if_id_reg.valid         <= 1'b0;
         end else begin
             if_id_reg.pc            <= pc;
             if_id_reg.instr         <= instr;
             if_id_reg.predict_taken <= predict_taken;
+            if_id_reg.valid         <= 1'b1;
         end
     end
 
@@ -146,6 +148,7 @@ module core
             id_ex1_reg.mem_write_en   <= mem_write_en;
             id_ex1_reg.mem_req_size_b <= mem_req_size_b;
             id_ex1_reg.mem_sign_ext   <= mem_sign_ext;
+            id_ex1_reg.valid          <= if_id_reg.valid;
         end
     end
 
@@ -170,6 +173,7 @@ module core
             ex1_ex2_reg.mem_write_en    <= id_ex1_reg.mem_write_en;
             ex1_ex2_reg.mem_req_size_b  <= id_ex1_reg.mem_req_size_b;
             ex1_ex2_reg.mem_sign_ext    <= id_ex1_reg.mem_sign_ext;
+            ex1_ex2_reg.valid           <= id_ex1_reg.valid;
         end
     end
 
@@ -180,6 +184,7 @@ module core
             ex2_ret_reg.reg_rd         <= ex1_ex2_reg.reg_rd;
             ex2_ret_reg.reg_write_en   <= ex1_ex2_reg.reg_write_en;
             ex2_ret_reg.reg_write_data <= reg_write_data;
+            ex2_ret_reg.valid          <= ex1_ex2_reg.valid;
         end
     end
 
@@ -192,7 +197,7 @@ module core
         .predict_taken (predict_taken)
     );
 
-    mem #(.NUM_WORDS(4096)) memory (
+    mem #(.NUM_WORDS(16384)) memory (
         .clk    (clk),
 
         .addr_a (instr_fetch_addr),

@@ -1,8 +1,10 @@
-# Run the supported rv32ui riscv-tests.
-# ./run_tests.py          # run the supported subset
-# ./run_tests.py add sub  # run just these
+# ./run_tests.py                    # run riscv-tests 
+# ./run_tests.py add sub            # run just these
+# ./run_tests.py --benchmark        # run coremark benchmark
 
+import datetime
 import glob
+import json
 import os
 import subprocess
 import sys
@@ -30,15 +32,28 @@ SKIP = {
     "fence_i", "ma_data"
 }
 
+RUNS = os.path.join(ROOT, "runs")
+SYSTEM_META = os.path.join(ROOT, "system_meta.json")
+COREMARK_DIR = os.path.join(ROOT, "coremark")
 
-def compile_runner():
+
+def load_system_meta():
+    try:
+        with open(SYSTEM_META) as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def compile_runner(benchmark=False):
     pkgs = sorted(glob.glob(os.path.join(RTL, "*_pkg.sv")))
     rtl_rest = [f for f in sorted(glob.glob(os.path.join(RTL, "*.sv"))) if f not in pkgs]
     tb = sorted(glob.glob(os.path.join(TB, "*.sv")))
     vvp = os.path.join(BUILD, "run_tb.vvp")
     os.makedirs(BUILD, exist_ok=True)
+    flags = ["-DBENCHMARK"] if benchmark else []
     r = subprocess.run(
-        ["iverilog", "-g2012", "-s", "run_tb", "-o", vvp, *pkgs, *rtl_rest, *tb],
+        ["iverilog", "-g2012", "-s", "run_tb", "-o", vvp, *flags, *pkgs, *rtl_rest, *tb],
         capture_output=True, text=True,
     )
     if r.returncode != 0:
@@ -46,33 +61,89 @@ def compile_runner():
     return vvp
 
 
+def build_coremark():
+    r = subprocess.run(["make", "-C", COREMARK_DIR], capture_output=True, text=True)
+    if r.returncode != 0:
+        sys.exit("coremark build failed:\n" + r.stderr)
+    return os.path.join(BUILD, "coremark.hex")
+
+
 def run_one(vvp, name):
-    hexf = assemble.build(os.path.join(RV32UI, name + ".S"))
-    out = subprocess.run([vvp, "+HEX=" + hexf], capture_output=True, text=True).stdout
+    if name == "coremark":
+        hexf = build_coremark()
+        args = [vvp, "+HEX=" + hexf, "+TIMEOUT=5000000", "+TOHOST=32768"]
+    else:
+        hexf = assemble.build(os.path.join(RV32UI, name + ".S"))
+        args = [vvp, "+HEX=" + hexf]
+    out = subprocess.run(args, capture_output=True, text=True).stdout
     for line in out.splitlines():
         word = line.split()
         if word and word[0] in ("PASS", "FAIL", "TIMEOUT"):
-            return word[0], line.strip()
-    return "ERROR", out.strip()
+            kv = {}
+            for token in word[1:]:
+                if "=" in token:
+                    k, _, v = token.partition("=")
+                    try: kv[k] = int(v)
+                    except ValueError: pass
+            return word[0], line.strip(), kv
+    return "ERROR", out.strip(), {}
+
+
+def save_run(results, total_cycles, total_instrs, npass, names):
+    os.makedirs(RUNS, exist_ok=True)
+    ts = datetime.datetime.now()
+    entry = {
+        "timestamp": ts.isoformat(timespec="seconds"),
+        "system": load_system_meta(),
+        "tests": results,
+        "summary": {
+            "passed": npass,
+            "total": len(names),
+            "total_cycles": total_cycles,
+            "total_instrs": total_instrs,
+            "weighted_ipc": round(total_instrs / total_cycles, 4) if total_cycles else 0,
+        },
+    }
+    fname = ts.strftime("%Y-%m-%dT%H-%M-%S") + ".json"
+    with open(os.path.join(RUNS, fname), "w") as f:
+        json.dump(entry, f, indent=4)
+    print(f"run saved to runs/{fname}")
 
 
 def main(argv):
-    names = argv[1:] or SUPPORTED
-    vvp = compile_runner()
+    benchmark = "--benchmark" in argv
+    args = [a for a in argv[1:] if not a.startswith("--")]
+    names = args or (["coremark"] if benchmark else SUPPORTED)
+    vvp = compile_runner(benchmark)
 
     npass = 0
     failures = []
+    total_cycles = 0
+    total_instrs = 0
+    results = []
     for name in names:
-        status, detail = run_one(vvp, name)
+        status, detail, kv = run_one(vvp, name)
         mark = "ok " if status == "PASS" else "XXX"
-        print(f"  [{mark}] {name:8} {detail if status != 'PASS' else ''}".rstrip())
+        suffix = ""
+        if benchmark and kv:
+            cycles, instrs = kv.get("cycles", 0), kv.get("instrs", 0)
+            ipc = instrs / cycles if cycles else 0
+            suffix = f"  {cycles} cycles  {instrs} instrs  IPC={ipc:.3f}"
+            results.append({"name": name, "status": status, "cycles": cycles, "instrs": instrs, "ipc": round(ipc, 4)})
+            if status == "PASS":
+                total_cycles += cycles
+                total_instrs += instrs
+        print(f"  [{mark}] {name:8} {detail if status != 'PASS' else ''}{suffix}".rstrip())
         if status == "PASS":
             npass += 1
         else:
             failures.append(name)
 
     print(f"\n{npass}/{len(names)} passed")
-    if not argv[1:]:
+    if benchmark and total_cycles:
+        print(f"weighted avg IPC: {total_instrs / total_cycles:.3f}  ({total_instrs} instrs / {total_cycles} cycles)")
+        save_run(results, total_cycles, total_instrs, npass, names)
+    if not args and not benchmark:
         print("skipped: " + ", ".join(i for i in SKIP))
     sys.exit(1 if failures else 0)
 
