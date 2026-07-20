@@ -1,0 +1,23 @@
+{
+    "timestamp": "2026-07-20T19:04:40",
+    "system": {
+        "name": "Resolve jumps and branches asap",
+        "mem_system": ""
+    },
+    "tests": [
+        {
+            "name": "coremark",
+            "status": "PASS",
+            "cycles": 1040100,
+            "instrs": 747162,
+            "ipc": 0.7184
+        }
+    ],
+    "summary": {
+        "passed": 1,
+        "total": 1,
+        "total_cycles": 1040100,
+        "total_instrs": 747162,
+        "weighted_ipc": 0.7184
+    }
+}

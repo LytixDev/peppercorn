@@ -1,0 +1,23 @@
+{
+    "timestamp": "2026-07-20T12:11:46",
+    "system": {
+        "name": "Resolve jumps during decode",
+        "mem_system": ""
+    },
+    "tests": [
+        {
+            "name": "coremark",
+            "status": "PASS",
+            "cycles": 1178867,
+            "instrs": 747162,
+            "ipc": 0.6338
+        }
+    ],
+    "summary": {
+        "passed": 1,
+        "total": 1,
+        "total_cycles": 1178867,
+        "total_instrs": 747162,
+        "weighted_ipc": 0.6338
+    }
+}

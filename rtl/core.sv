@@ -29,6 +29,7 @@ module core
     logic link; // rd = pc + 4, else alu output
     logic jump; // next_pc = alu output, else pc + 4
     logic branch; // next_pc = pc + imm if branch is taken
+    logic id_jal; // JAL in ID: target (pc + imm) known now, redirect eagerly
     logic mem_read;
     logic mem_write_en;
     logic mem_sign_ext;
@@ -70,33 +71,39 @@ module core
     end
     
 
-    // A trick here is to use the funct3's lsb to figure out if the alu output is supposed to be 
+    // A trick here is to use the funct3's lsb to figure out if the alu output is supposed to be
     // 0 or 1 for a branch to be taken.
     logic [1:0] branch_kind;
     logic raw_branch_taken, branch_taken;
     logic alu_lsb;
-    assign branch_kind = ex1_ex2_reg.instr[14:13];
-    assign alu_lsb     = ex1_ex2_reg.alu_result[0];
+    assign branch_kind = id_ex1_reg.instr[14:13];
+    assign alu_lsb     = alu_out[0];
     always_comb case (branch_kind)
-        2'b00:   raw_branch_taken = (ex1_ex2_reg.alu_result == 0); // eq
-        2'b10:   raw_branch_taken = alu_lsb;                       // lt
-        2'b11:   raw_branch_taken = alu_lsb;                       // ltu
+        2'b00:   raw_branch_taken = (alu_out == 0); // eq
+        2'b10:   raw_branch_taken = alu_lsb;        // lt
+        2'b11:   raw_branch_taken = alu_lsb;        // ltu
         default: raw_branch_taken = 1'b0;
     endcase
-    assign branch_taken = raw_branch_taken ^ ex1_ex2_reg.instr[12];
+    assign branch_taken = raw_branch_taken ^ id_ex1_reg.instr[12];
 
-    // Since we always predict not taken, we must flush mispredicted branches
+    // Branches and JALR are solved during EX1.
+    // We always predict not taken so a taken branch/jump flushes the ID and IF 
+    // stages and redirects the pc.
     logic flush;
-    assign flush = ex1_ex2_reg.jump || (ex1_ex2_reg.branch && branch_taken);
+    assign flush = id_ex1_reg.jump || (id_ex1_reg.branch && branch_taken);
     // Next pc selection
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             pc <= 0;
         end else begin
-            if (ex1_ex2_reg.jump) begin
-                pc <= ex1_ex2_reg.alu_result & ~32'b1;
-            end else if (ex1_ex2_reg.branch && branch_taken) begin
-                pc <= ex1_ex2_reg.pc + ex1_ex2_reg.imm;
+            if (flush) begin
+                if (id_ex1_reg.jump) // JALR: rs1 + imm, low bit cleared
+                    pc <= alu_out & ~32'b1;
+                else                 // taken branch: pc + imm
+                    pc <= id_ex1_reg.pc + id_ex1_reg.imm;
+            end else if (id_jal) begin
+                // Resolved before the ex stage
+                pc <= if_id_reg.pc + imm;
             end else begin
                 pc <= next_pc;
             end
@@ -108,7 +115,7 @@ module core
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             if_id_reg <= '0;
-        end else if (flush) begin
+        end else if (flush || id_jal) begin
             if_id_reg.pc            <= '0;
             if_id_reg.instr         <= `NOP_INSTR;
             if_id_reg.predict_taken <= 1'b0;
@@ -142,7 +149,7 @@ module core
             id_ex1_reg.use_pc         <= use_pc;
             id_ex1_reg.reg_write_en   <= reg_write_en;
             id_ex1_reg.link           <= link;
-            id_ex1_reg.jump           <= jump;
+            id_ex1_reg.jump           <= jump && !id_jal; // JAL already redirected in ID
             id_ex1_reg.branch         <= branch;
             id_ex1_reg.mem_read       <= mem_read;
             id_ex1_reg.mem_write_en   <= mem_write_en;
@@ -152,11 +159,10 @@ module core
         end
     end
 
+    // Nothing older than EX1 redirects, so EX2 and RET are never flushed: the
+    // branch/JALR that resolves in EX1 advances here to commit (JALR writes rd).
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            ex1_ex2_reg <= '0;
-        end else if (flush) begin
-            // Effictively a NOP: has no sideeffects
             ex1_ex2_reg <= '0;
         end else begin
             ex1_ex2_reg.pc              <= id_ex1_reg.pc;
@@ -232,6 +238,9 @@ module core
         .mem_req_size_b (mem_req_size_b),
         .mem_sign_ext   (mem_sign_ext)
     );
+
+    // JAL is unconditional and its target is pc + imm, so it can be resolved in the ID stage
+    assign id_jal = jump && use_pc;
 
     /* Forwarding unit */
     assign fwd_ex2_rs1 = ex1_ex2_reg.reg_write_en
