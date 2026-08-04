@@ -1,0 +1,23 @@
+{
+    "timestamp": "2026-08-04T18:44:40",
+    "system": {
+        "name": "Branch predictor with 128 2-bit saturating counters and 256-entry BTB",
+        "mem_system": ""
+    },
+    "tests": [
+        {
+            "name": "coremark",
+            "status": "PASS",
+            "cycles": 899887,
+            "instrs": 774340,
+            "ipc": 0.8605
+        }
+    ],
+    "summary": {
+        "passed": 1,
+        "total": 1,
+        "total_cycles": 899887,
+        "total_instrs": 774340,
+        "weighted_ipc": 0.8605
+    }
+}
