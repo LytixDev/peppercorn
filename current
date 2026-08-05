@@ -1,0 +1,33 @@
+## Pipeline:
+
+IF: 
+- Make the memory request for the instruction
+- Determine the next PC
+
+ID:
+- Decode instruction and set all control signals
+- Read from the register file
+
+EX1:
+- the alu computes in this cycle
+- this means: adresses are generated, branches are resolved, and alu ops are computed
+
+EX2 (mem reads):
+- mem reads and writes
+
+RET:
+- currently everything is in-order, so only write-back to the register file
+- later: retire in-order
+
+- Branch prediction metrics
+- Accuracy (prediction = actual / total predictions)
+- MPKI
+
+Next:
+- RAS
+- try to get IPC as closed as possible to 1.0
+---- try to introduce a more realistic memory hierarchy system!
+- retire unit
+- bypass EX2 for non memory ops
+- allow read non-memory ops to execute in EX1 even if EX2 is busy
+- need to detect load-use hazards, and stall the pipeline

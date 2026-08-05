@@ -55,6 +55,7 @@ package peppercorn_pkg;
         logic [31:0] pc;
         logic [31:0] instr;
         logic        predict_taken;
+        logic [31:0] predict_target; // BTB target the fetch was redirected to
         logic        valid;
     } if_id_barrier;
 
@@ -62,6 +63,7 @@ package peppercorn_pkg;
         logic [31:0] pc;
         logic [31:0] instr; // TODO: not needed.
         logic        predict_taken;
+        logic [31:0] predict_target; // BTB target the fetch was redirected to
         logic [4:0]  reg_rs1;
         logic [4:0]  reg_rs2;
         logic [4:0]  reg_rd;

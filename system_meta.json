@@ -1,4 +1,4 @@
 {
-    "name": "Resolve jumps and branches asap",
+    "name": "Branch predictor with 128 2-bit saturating counters and 256-entry BTB",
     "mem_system": ""
 }
