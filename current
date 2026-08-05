@@ -19,33 +19,15 @@ RET:
 - currently everything is in-order, so only write-back to the register file
 - later: retire in-order
 
-## Branch predictor
-Start with the most simple:
-1. BTB  (PC -> target)
-    - 256 entries
-    - uses 8 LSB of PC as index, no tag, but a valid bit
-    - each entry is updated with a new target every time a branch/jump is taken
-2. Saturating 2-bit counters
-    - 128 entries
-    - uses 7 LSB of PC as index, no tag
-    - each entry is updated when a branch is resolved
-
-Flow:
-
-
-
+- Branch prediction metrics
+- Accuracy (prediction = actual / total predictions)
+- MPKI
 
 Next:
 - RAS
+- try to get IPC as closed as possible to 1.0
+---- try to introduce a more realistic memory hierarchy system!
 - retire unit
 - bypass EX2 for non memory ops
 - allow read non-memory ops to execute in EX1 even if EX2 is busy
 - need to detect load-use hazards, and stall the pipeline
-
-
-Q: Memory requests are served instantly, so why is IPC not 1?
-- Branch mispredictions
-- So what can we do?
-1. Resolve branch and jumps as early as possible
-2. Branch predictor
-

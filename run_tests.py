@@ -89,7 +89,8 @@ def run_one(vvp, name):
     return "ERROR", out.strip(), {}
 
 
-def save_run(results, total_cycles, total_instrs, npass, names):
+def save_run(results, total_cycles, total_instrs, npass, names,
+             total_bp_resolved=0, total_bp_mispredicts=0):
     os.makedirs(RUNS, exist_ok=True)
     ts = datetime.datetime.now()
     entry = {
@@ -102,6 +103,11 @@ def save_run(results, total_cycles, total_instrs, npass, names):
             "total_cycles": total_cycles,
             "total_instrs": total_instrs,
             "weighted_ipc": round(total_instrs / total_cycles, 4) if total_cycles else 0,
+            "bp_resolved": total_bp_resolved,
+            "bp_mispredicts": total_bp_mispredicts,
+            "bp_accuracy": round((total_bp_resolved - total_bp_mispredicts) / total_bp_resolved, 4)
+                           if total_bp_resolved else 0,
+            "bp_mpki": round(total_bp_mispredicts / total_instrs * 1000, 2) if total_instrs else 0,
         },
     }
     fname = ts.strftime("%Y-%m-%dT%H-%M-%S") + ".json"
@@ -120,6 +126,8 @@ def main(argv):
     failures = []
     total_cycles = 0
     total_instrs = 0
+    total_bp_resolved = 0
+    total_bp_mispredicts = 0
     results = []
     for name in names:
         status, detail, kv = run_one(vvp, name)
@@ -128,11 +136,18 @@ def main(argv):
         if benchmark and kv:
             cycles, instrs = kv.get("cycles", 0), kv.get("instrs", 0)
             ipc = instrs / cycles if cycles else 0
-            suffix = f"  {cycles} cycles  {instrs} instrs  IPC={ipc:.3f}"
-            results.append({"name": name, "status": status, "cycles": cycles, "instrs": instrs, "ipc": round(ipc, 4)})
+            bp_resolved, bp_mispredicts = kv.get("bp_resolved", 0), kv.get("bp_mispredicts", 0)
+            bp_accuracy = (bp_resolved - bp_mispredicts) / bp_resolved if bp_resolved else 0
+            bp_mpki = bp_mispredicts / instrs * 1000 if instrs else 0
+            suffix = f"  {cycles} cycles  {instrs} instrs  IPC={ipc:.3f}  BP={bp_accuracy:.1%}  MPKI={bp_mpki:.2f}"
+            results.append({"name": name, "status": status, "cycles": cycles, "instrs": instrs, "ipc": round(ipc, 4),
+                            "bp_resolved": bp_resolved, "bp_mispredicts": bp_mispredicts,
+                            "bp_accuracy": round(bp_accuracy, 4), "bp_mpki": round(bp_mpki, 2)})
             if status == "PASS":
                 total_cycles += cycles
                 total_instrs += instrs
+                total_bp_resolved += bp_resolved
+                total_bp_mispredicts += bp_mispredicts
         print(f"  [{mark}] {name:8} {detail if status != 'PASS' else ''}{suffix}".rstrip())
         if status == "PASS":
             npass += 1
@@ -142,7 +157,12 @@ def main(argv):
     print(f"\n{npass}/{len(names)} passed")
     if benchmark and total_cycles:
         print(f"weighted avg IPC: {total_instrs / total_cycles:.3f}  ({total_instrs} instrs / {total_cycles} cycles)")
-        save_run(results, total_cycles, total_instrs, npass, names)
+        if total_bp_resolved:
+            acc = (total_bp_resolved - total_bp_mispredicts) / total_bp_resolved
+            mpki = total_bp_mispredicts / total_instrs * 1000 if total_instrs else 0
+            print(f"BP accuracy: {acc:.1%}  ({total_bp_mispredicts} mispredicts / {total_bp_resolved} resolved)  MPKI: {mpki:.2f}")
+        save_run(results, total_cycles, total_instrs, npass, names,
+                 total_bp_resolved, total_bp_mispredicts)
     if not args and not benchmark:
         print("skipped: " + ", ".join(i for i in SKIP))
     sys.exit(1 if failures else 0)

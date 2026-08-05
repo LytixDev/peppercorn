@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-08-04T18:44:40",
+    "timestamp": "2026-08-05T21:28:06",
     "system": {
         "name": "Branch predictor with 128 2-bit saturating counters and 256-entry BTB",
         "mem_system": ""
@@ -10,7 +10,11 @@
             "status": "PASS",
             "cycles": 899887,
             "instrs": 774340,
-            "ipc": 0.8605
+            "ipc": 0.8605,
+            "bp_resolved": 221627,
+            "bp_mispredicts": 55669,
+            "bp_accuracy": 0.7488,
+            "bp_mpki": 71.89
         }
     ],
     "summary": {
@@ -18,6 +22,10 @@
         "total": 1,
         "total_cycles": 899887,
         "total_instrs": 774340,
-        "weighted_ipc": 0.8605
+        "weighted_ipc": 0.8605,
+        "bp_resolved": 221627,
+        "bp_mispredicts": 55669,
+        "bp_accuracy": 0.7488,
+        "bp_mpki": 71.89
     }
 }

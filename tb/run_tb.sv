@@ -22,6 +22,19 @@ module run_tb;
     end
 `endif
 
+    // Branch prediction accuracy data
+    int unsigned bp_resolved;
+    int unsigned bp_mispredicts;
+    always @(posedge clk) begin
+        if (!rst_n) begin
+            bp_resolved    = 0;
+            bp_mispredicts = 0;
+        end else if (dut.id_ex1_reg.valid && (dut.id_ex1_reg.branch || dut.id_ex1_reg.jump)) begin
+            bp_resolved++;
+            if (dut.ex1_branch_mispredict) bp_mispredicts++;
+        end
+    end
+
     string hexfile;
     logic [31:0] exit_code;
     integer timeout;
@@ -58,22 +71,28 @@ module run_tb;
 `ifdef HEARTBEAT
             if (bench_cycles % 50000 == 0)
                 $fdisplay(32'h8000_0002, "  hb: cyc=%0d instrs=%0d pc=%08h",
-                          bench_cycles, bench_instrs, dut.pc);
+                          bench_cycles, bench_instrs, dut.if_pc);
 `endif
             exit_code = dut.memory.words[tohost >> 2];
             if (exit_code !== 32'd0) begin
                 if (exit_code == 32'd1)
 `ifdef BENCHMARK
-                    $display("PASS  %s cycles=%0d instrs=%0d", hexfile, bench_cycles, bench_instrs);
+                    $display("PASS  %s cycles=%0d instrs=%0d bp_resolved=%0d bp_mispredicts=%0d",
+                             hexfile, bench_cycles, bench_instrs, bp_resolved, bp_mispredicts);
 `else
                     $display("PASS  %s", hexfile);
 `endif
                 else
 `ifdef BENCHMARK
-                    $display("FAIL  %s : test %0d cycles=%0d instrs=%0d", hexfile, exit_code >> 1, bench_cycles, bench_instrs);
+                    $display("FAIL  %s : test %0d cycles=%0d instrs=%0d bp_resolved=%0d bp_mispredicts=%0d",
+                             hexfile, exit_code >> 1, bench_cycles, bench_instrs, bp_resolved, bp_mispredicts);
 `else
                     $display("FAIL  %s : test %0d", hexfile, exit_code >> 1);
 `endif
+                if (bp_resolved > 0)
+                    $display("BP    %0d/%0d correct (%.1f%%)",
+                             bp_resolved - bp_mispredicts, bp_resolved,
+                             100.0 * (bp_resolved - bp_mispredicts) / bp_resolved);
                 $finish;
             end
         end
