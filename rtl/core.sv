@@ -9,7 +9,6 @@ module core
 
     /* IF stage */
     logic [31:0] if_pc;
-    logic [31:0] if_next_pc;
     logic [31:0] if_instr;
     logic [31:0] if_bp_target;
     logic        if_bp_predict_taken;
@@ -90,12 +89,6 @@ module core
     assign ex1_branch_taken = ex1_raw_branch_taken ^ id_ex1_reg.instr[12];
 
     /* Next PC fetch selection */
-    always_comb begin
-        if (if_bp_predict_taken) if_next_pc = if_bp_target;
-        else                     if_next_pc = if_pc + 4;
-    end
-
-    /* Resolve branch mispredicts and set the PC */
     // Branches and JALR are resolved during EX1. JALR is unconditionally taken, but the BTB can supply the wrong target.
     // JAL are handled during the ID stage.
     logic        ex1_actual_taken;
@@ -121,7 +114,8 @@ module core
                 if_pc <= if_id_reg.pc + id_imm;
             end else begin
                 // Happy path
-                if_pc <= if_next_pc;
+                if (if_bp_predict_taken) if_pc <= if_bp_target;
+                else                     if_pc <= if_pc + 4;
             end
         end
     end
