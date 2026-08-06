@@ -1,4 +1,4 @@
 {
-    "name": "Branch predictor with 128 2-bit saturating counters and 256-entry BTB",
+    "name": "BP handles JAL as well",
     "mem_system": ""
 }

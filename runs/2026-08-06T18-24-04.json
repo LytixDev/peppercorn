@@ -1,0 +1,31 @@
+{
+    "timestamp": "2026-08-06T18:24:04",
+    "system": {
+        "name": "BP handles JAL as well",
+        "mem_system": ""
+    },
+    "tests": [
+        {
+            "name": "coremark",
+            "status": "PASS",
+            "cycles": 882079,
+            "instrs": 774340,
+            "ipc": 0.8779,
+            "bp_resolved": 235834,
+            "bp_mispredicts": 49845,
+            "bp_accuracy": 0.7886,
+            "bp_mpki": 64.37
+        }
+    ],
+    "summary": {
+        "passed": 1,
+        "total": 1,
+        "total_cycles": 882079,
+        "total_instrs": 774340,
+        "weighted_ipc": 0.8779,
+        "bp_resolved": 235834,
+        "bp_mispredicts": 49845,
+        "bp_accuracy": 0.7886,
+        "bp_mpki": 64.37
+    }
+}

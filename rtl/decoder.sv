@@ -113,7 +113,6 @@ module decoder
                 imm          = imm_u;
             end
 
-            // TODO: The next pc for unconditional jumps should probably be computed eagerly
             OPC_JAL: begin // rd = pc + 4, next_pc = pc + imm
                 reg_write_en = 1'b1;
                 use_imm      = 1'b1;

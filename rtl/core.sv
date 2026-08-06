@@ -1,5 +1,8 @@
 module core
     import peppercorn_pkg::*;
+#(
+    parameter bit USE_RAS = 1
+)
 (
     input logic clk,
     input logic rst_n
@@ -24,15 +27,20 @@ module core
     logic        id_use_imm;
     logic        id_use_pc;
     logic        id_reg_write_en;
-    logic        id_link;   // rd = pc + 4, else alu output
-    logic        id_jump;   // next_pc = alu output, else pc + 4
-    logic        id_branch; // next_pc = pc + imm if branch is taken
-    logic        id_jal;    // JAL in ID: target (pc + imm) known now, redirect eagerly
+    logic        id_link;    // rd = pc + 4, else alu output
+    logic        id_jump;    // next_pc = alu output, else pc + 4
+    logic        id_branch;  // next_pc = pc + imm if branch is taken
+    logic        id_jal;     // JAL in ID: target (pc + imm) known now
+    logic        id_jal_redirect; // JAL the BTB didn't predict: redirect eagerly from ID
+    logic        id_rd_link, id_rs1_link;
+    logic        id_ras_push, id_ras_pop;
+    logic        id_ras_redirect;
     logic        id_mem_read;
     logic        id_mem_write_en;
     logic        id_mem_sign_ext;
     logic [1:0]  id_mem_req_size_a;
     logic [1:0]  id_mem_req_size_b;
+    logic [31:0] id_ras_popped_target;
 
     /* EX1 stage */
     logic [31:0] ex1_alu_out;
@@ -89,8 +97,9 @@ module core
     assign ex1_branch_taken = ex1_raw_branch_taken ^ id_ex1_reg.instr[12];
 
     /* Next PC fetch selection */
-    // Branches and JALR are resolved during EX1. JALR is unconditionally taken, but the BTB can supply the wrong target.
-    // JAL are handled during the ID stage.
+    // Branches and JALR are resolved during EX1. 
+    // JALR is unconditionally taken, but the RAS may supply the wrong target.
+    // JAL are handled earlier during the ID stage.
     logic        ex1_actual_taken;
     logic [31:0] ex1_actual_target;
     assign ex1_actual_taken  = id_ex1_reg.jump || (id_ex1_reg.branch && ex1_branch_taken);
@@ -100,7 +109,7 @@ module core
     logic ex1_branch_mispredict;
     logic [31:0] ex1_redirect_pc;
     assign ex1_branch_mispredict = id_ex1_reg.predict_taken != ex1_actual_taken // wrong direction
-                                || (id_ex1_reg.predict_taken && id_ex1_reg.predict_target != ex1_actual_target); // JALR only
+                                || (id_ex1_reg.predict_taken && id_ex1_reg.predict_target != ex1_actual_target); // Wrong JALR target in the RAS
     assign ex1_redirect_pc       = ex1_actual_taken ? ex1_actual_target : id_ex1_reg.pc + 4;
 
     always_ff @(posedge clk or negedge rst_n) begin
@@ -109,9 +118,12 @@ module core
         end else begin
             if (ex1_branch_mispredict) begin
                 if_pc <= ex1_redirect_pc;
-            end else if (id_jal) begin
+            end else if (id_jal_redirect) begin
                 // Resolved during ID
                 if_pc <= if_id_reg.pc + id_imm;
+            end else if (id_ras_redirect) begin
+                // Return in ID: fetch from the RAS prediction
+                if_pc <= id_ras_popped_target;
             end else begin
                 // Happy path
                 if (if_bp_predict_taken) if_pc <= if_bp_target;
@@ -125,7 +137,7 @@ module core
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             if_id_reg <= '0;
-        end else if (ex1_branch_mispredict || id_jal) begin
+        end else if (ex1_branch_mispredict || id_jal_redirect || id_ras_redirect) begin
             if_id_reg.pc             <= '0;
             if_id_reg.instr          <= `NOP_INSTR;
             if_id_reg.predict_taken  <= 1'b0;
@@ -149,10 +161,13 @@ module core
         end else begin
             id_ex1_reg.pc             <= if_id_reg.pc;
             id_ex1_reg.instr          <= if_id_reg.instr;
-            // The tagged BTB never holds JAL entries (JAL resolves in ID and
-            // never updates the BTB), so predict_taken here is trustworthy
-            id_ex1_reg.predict_taken  <= if_id_reg.predict_taken;
-            id_ex1_reg.predict_target <= if_id_reg.predict_target;
+            // ID-stage predictions take priority over the BP in the IF stage 
+            // So, the RAS target for retrnrs and eagilerly evaluated JALs
+            // where the BP missed. On a BTB-predicted JAL keep the BTB target so EX1 still verifies the fetched path.
+            id_ex1_reg.predict_taken  <= if_id_reg.predict_taken || id_ras_pop || id_jal;
+            id_ex1_reg.predict_target <= id_ras_pop      ? id_ras_popped_target
+                                       : id_jal_redirect ? if_id_reg.pc + id_imm
+                                       :                   if_id_reg.predict_target;
             id_ex1_reg.reg_rs1        <= id_reg_rs1;
             id_ex1_reg.reg_rs2        <= id_reg_rs2;
             id_ex1_reg.reg_rd         <= id_reg_rd;
@@ -164,7 +179,7 @@ module core
             id_ex1_reg.use_pc         <= id_use_pc;
             id_ex1_reg.reg_write_en   <= id_reg_write_en;
             id_ex1_reg.link           <= id_link;
-            id_ex1_reg.jump           <= id_jump && !id_jal; // JAL already redirected in ID
+            id_ex1_reg.jump           <= id_jump; // includes JAL, so the BTB learns JAL targets
             id_ex1_reg.branch         <= id_branch;
             id_ex1_reg.mem_read       <= id_mem_read;
             id_ex1_reg.mem_write_en   <= id_mem_write_en;
@@ -223,6 +238,16 @@ module core
         .update_en     (id_ex1_reg.branch || id_ex1_reg.jump)
     );
 
+    ras #(.ENTRIES(16)) ras_ (
+        .clk         (clk),
+        .rst_n       (rst_n),
+        .push_en     (id_ras_push),
+        .push_target (if_id_reg.pc + 4),
+
+        .pop_en        (id_ras_pop),
+        .popped_target (id_ras_popped_target)
+    );
+
     mem #(.NUM_WORDS(16384)) memory (
         .clk    (clk),
 
@@ -259,8 +284,21 @@ module core
         .mem_sign_ext   (id_mem_sign_ext)
     );
 
-    // JAL is unconditional and its target is pc + imm, so it can be resolved in the ID stage
-    assign id_jal = id_jump && id_use_pc;
+    // JAL is unconditional and its target is pc + imm, so it can be eagerly resolved in the ID stage.
+    // Only redirect on a BP miss (cold or alias).
+    assign id_jal          = id_jump && id_use_pc;
+    assign id_jal_redirect = id_jal && !if_id_reg.predict_taken;
+
+    // RAS: push on calls (rd = link), pop on returns (JALR with rs1 = link).
+    assign id_rd_link  = id_reg_rd  == 5'd1 || id_reg_rd  == 5'd5;
+    assign id_rs1_link = id_reg_rs1 == 5'd1 || id_reg_rs1 == 5'd5;
+    assign id_ras_push = USE_RAS && id_jump && id_rd_link && !ex1_branch_mispredict;
+    assign id_ras_pop  = USE_RAS && id_jump && !id_use_pc && id_rs1_link
+                      && !(id_rd_link && id_reg_rd == id_reg_rs1) // rd == rs1 == link: push only
+                      && !ex1_branch_mispredict;
+    // Skip the redirect (and its bubble) when fetch already went where the RAS points
+    assign id_ras_redirect = id_ras_pop
+                          && !(if_id_reg.predict_taken && if_id_reg.predict_target == id_ras_popped_target);
 
     /* Forwarding unit */
     assign ex1_fwd_ex2_rs1 = ex1_ex2_reg.reg_write_en

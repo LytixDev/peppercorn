@@ -22,12 +22,14 @@ module mem #(
     input  logic                 write_en_b,
     output logic [WORD_SIZE-1:0] out_b // only valid when write_en_b is false
 );
+    localparam int IDX_BITS = $clog2(NUM_WORDS);
+
     logic [WORD_SIZE-1:0] words [0:NUM_WORDS-1];
 
-    logic [$clog2(NUM_WORDS)+1 : 0] addr_index_a;
-    logic [$clog2(NUM_WORDS)+1 : 0] addr_index_b;
-    assign addr_index_a = addr_a[$clog2(NUM_WORDS)+1 : 2];
-    assign addr_index_b = addr_b[$clog2(NUM_WORDS)+1 : 2];
+    logic [IDX_BITS-1:0] addr_index_a;
+    logic [IDX_BITS-1:0] addr_index_b;
+    assign addr_index_a = addr_a[IDX_BITS+1 : 2];
+    assign addr_index_b = addr_b[IDX_BITS+1 : 2];
 
     always_comb begin
         logic [4:0] shamt_a, shamt_b;

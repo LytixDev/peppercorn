@@ -1,0 +1,31 @@
+{
+    "timestamp": "2026-08-06T15:24:25",
+    "system": {
+        "name": "RAS",
+        "mem_system": ""
+    },
+    "tests": [
+        {
+            "name": "coremark",
+            "status": "PASS",
+            "cycles": 893415,
+            "instrs": 774340,
+            "ipc": 0.8667,
+            "bp_resolved": 221627,
+            "bp_mispredicts": 49197,
+            "bp_accuracy": 0.778,
+            "bp_mpki": 63.53
+        }
+    ],
+    "summary": {
+        "passed": 1,
+        "total": 1,
+        "total_cycles": 893415,
+        "total_instrs": 774340,
+        "weighted_ipc": 0.8667,
+        "bp_resolved": 221627,
+        "bp_mispredicts": 49197,
+        "bp_accuracy": 0.778,
+        "bp_mpki": 63.53
+    }
+}
